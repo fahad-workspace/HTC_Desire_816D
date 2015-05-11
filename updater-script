@@ -1,0 +1,27 @@
+assert(getprop("ro.product.device") == "htc_a5" || getprop("ro.build.product") == "htc_a5" || getprop("ro.product.device") == "htc_a5tl" || getprop("ro.build.product") == "htc_a5tl" || getprop("ro.product.device") == "htc_a5dug" || getprop("ro.build.product") == "htc_a5dug" || getprop("ro.product.device") == "htc_a5dwg" || getprop("ro.build.product") == "htc_a5dwg" || getprop("ro.product.device") == "htc_a5chl" || getprop("ro.build.product") == "htc_a5chl" || getprop("ro.product.device") == "htc_a5ul" || getprop("ro.build.product") == "htc_a5ul" || abort("This package is for device: htc_a5,htc_a5tl,htc_a5dug,htc_a5dwg,htc_a5chl,htc_a5ul; this device is " + getprop("ro.product.device") + "."););
+ifelse(is_mounted("/system"), unmount("/system"));
+package_extract_dir("install", "/tmp/install");
+set_metadata_recursive("/tmp/install", "uid", 0, "gid", 0, "dmode", 0755, "fmode", 0644);
+set_metadata_recursive("/tmp/install/bin", "uid", 0, "gid", 0, "dmode", 0755, "fmode", 0755);
+mount("ext4", "EMMC", "/dev/block/platform/msm_sdcc.1/by-name/system", "/system", "");
+run_program("/tmp/install/bin/backuptool.sh", "backup");
+unmount("/system");
+if is_mounted("/data") then
+run_program("/tmp/install/bin/otasigcheck.sh") != "31744" || abort("Can't install this package on top of incompatible data. Please try another package or run a factory reset");
+else
+mount("f2fs", "EMMC", "/dev/block/platform/msm_sdcc.1/by-name/userdata", "/data", "");
+run_program("/tmp/install/bin/otasigcheck.sh") != "31744" || abort("Can't install this package on top of incompatible data. Please try another package or run a factory reset");
+unmount("/data");
+endif;
+show_progress(0.750000, 0);
+block_image_update("/dev/block/platform/msm_sdcc.1/by-name/system", package_extract_file("system.transfer.list"), "system.new.dat", "system.patch.dat");
+show_progress(0.020000, 10);
+mount("ext4", "EMMC", "/dev/block/platform/msm_sdcc.1/by-name/system", "/system", "");
+run_program("/tmp/install/bin/backuptool.sh", "restore");
+unmount("/system");
+show_progress(0.050000, 5);
+package_extract_file("boot.img", "/dev/block/platform/msm_sdcc.1/by-name/boot");
+show_progress(0.200000, 10);
+mount("ext4", "EMMC", "/dev/block/platform/msm_sdcc.1/by-name/system", "/system", "");
+assert(run_program("/tmp/install/bin/makelinks.sh") == 0);
+unmount("/system");
